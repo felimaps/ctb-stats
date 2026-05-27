@@ -4,6 +4,7 @@ import type { UserProfile, PublicUserProfile, Match, MatchFormData, Title } from
 import { canRegisterTitle, buildTitlePayload } from './titleSync'
 import { normalizeProfile, toPublicProfile, defaultHealthPrivacy } from './profileUtils'
 import { mapAuthError, mapDbError } from './authErrors'
+import { withTimeout } from './asyncUtils'
 
 const PROFILES = 'profiles'
 
@@ -145,12 +146,13 @@ export async function signUp(
       return { user: null, error: upsertError }
     }
 
-    const user = await getProfile(userId)
-    return { user, error: null }
+    const { profile: created, error: profileErr } = await getOrCreateProfile(userId)
+    if (profileErr) return { user: null, error: profileErr }
+    return { user: created, error: null }
   }
 
   await new Promise((r) => setTimeout(r, 400))
-  const existing = await getProfile(userId)
+  const { profile: existing } = await getOrCreateProfile(userId)
   if (existing) {
     return {
       user: null,
@@ -178,14 +180,16 @@ export async function signIn(
   })
 
   if (error) return { user: null, error: mapAuthError(error.message) }
-  const user = await getProfile(data.user.id)
-  if (!user) {
+
+  const { profile, error: profileErr } = await getOrCreateProfile(data.user.id)
+  if (profileErr) return { user: null, error: profileErr }
+  if (!profile) {
     return {
       user: null,
-      error: 'Perfil não encontrado. Execute o setup do banco no Supabase ou cadastre-se novamente.',
+      error: 'Não foi possível carregar seu perfil. Tente novamente.',
     }
   }
-  return { user, error: null }
+  return { user: profile, error: null }
 }
 
 export async function signOut(): Promise<void> {
@@ -201,15 +205,121 @@ export async function getSessionUserId(): Promise<string | null> {
 
 // ——— Profile ———
 
-export async function getProfile(userId: string): Promise<UserProfile | null> {
+async function fetchProfileRow(
+  table: string,
+  userId: string
+): Promise<Record<string, unknown> | null> {
   const { data, error } = await getSupabase()
-    .from(PROFILES)
+    .from(table)
     .select('*')
     .eq('id', userId)
-    .single()
+    .maybeSingle()
 
-  if (error || !data) return null
-  return normalizeProfile(data as Record<string, unknown>)
+  if (error) {
+    const msg = error.message.toLowerCase()
+    if (!msg.includes('does not exist') && !msg.includes('relation')) {
+      console.error(`[CTB] fetchProfile ${table}:`, error.message)
+    }
+    return null
+  }
+  return (data as Record<string, unknown>) ?? null
+}
+
+function minimalProfileFromAuth(
+  userId: string,
+  authUser: { email?: string; user_metadata?: Record<string, unknown> }
+): Omit<UserProfile, 'created_at'> & { id: string } {
+  const meta = authUser.user_metadata ?? {}
+  return {
+    id: userId,
+    email: authUser.email?.trim() ?? '',
+    nome: String(meta.nome ?? authUser.email?.split('@')[0] ?? 'Jogador'),
+    foto_url: null,
+    cidade: String(meta.cidade ?? ''),
+    nivel: (meta.nivel as UserProfile['nivel']) ?? 'iniciante',
+    mao_dominante: (meta.mao_dominante as UserProfile['mao_dominante']) ?? 'direita',
+    estilo_jogo: String(meta.estilo_jogo ?? ''),
+    tipo_sanguineo: null,
+    alergias: null,
+    lesoes_recorrentes: null,
+    observacoes_medicas: null,
+    contato_emergencia: null,
+    telefone_emergencia: null,
+    medicacao_continua: null,
+    restricoes_fisicas: null,
+    ...defaultHealthPrivacy,
+  }
+}
+
+/** Busca perfil em profiles/users; se não existir, cria registro mínimo */
+export async function getOrCreateProfile(
+  userId: string
+): Promise<{ profile: UserProfile | null; error: string | null }> {
+  try {
+    const row =
+      (await fetchProfileRow(PROFILES, userId)) ??
+      (await fetchProfileRow(USERS_LEGACY, userId))
+
+    if (row) {
+      return { profile: normalizeProfile(row), error: null }
+    }
+
+    const sb = getSupabase()
+    const { data: authData, error: authError } = await sb.auth.getUser()
+    if (authError) {
+      console.error('[CTB] auth.getUser:', authError.message)
+      return { profile: null, error: mapAuthError(authError.message) }
+    }
+    if (!authData.user || authData.user.id !== userId) {
+      return { profile: null, error: 'Sessão inválida. Faça login novamente.' }
+    }
+
+    const payload = minimalProfileFromAuth(userId, authData.user)
+    const { error: upsertError } = await sb.from(PROFILES).upsert(payload, {
+      onConflict: 'id',
+    })
+
+    if (upsertError) {
+      console.error('[CTB] create profile:', upsertError.message)
+      return { profile: null, error: mapDbError(upsertError.message) }
+    }
+
+    await sb.from(USERS_LEGACY).upsert(payload, { onConflict: 'id' }).then(({ error: e }) => {
+      if (e) console.warn('[CTB] sync users:', e.message)
+    })
+
+    const created = await fetchProfileRow(PROFILES, userId)
+    if (!created) {
+      return {
+        profile: null,
+        error: 'Perfil criado, mas não foi possível carregá-lo. Atualize a página.',
+      }
+    }
+
+    return { profile: normalizeProfile(created), error: null }
+  } catch (e) {
+    console.error('[CTB] getOrCreateProfile:', e)
+    return {
+      profile: null,
+      error: e instanceof Error ? e.message : 'Erro ao carregar perfil',
+    }
+  }
+}
+
+export async function getProfile(userId: string): Promise<UserProfile | null> {
+  const { profile } = await getOrCreateProfile(userId)
+  return profile
+}
+
+export async function loadProfileWithTimeout(
+  userId: string,
+  timeoutMs = 12_000
+): Promise<{ profile: UserProfile | null; error: string | null }> {
+  return withTimeout(
+    getOrCreateProfile(userId),
+    timeoutMs,
+    'Tempo esgotado ao carregar seu perfil. Verifique a conexão e tente de novo.'
+  )
 }
 
 export async function updateProfile(

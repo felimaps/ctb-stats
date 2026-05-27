@@ -19,13 +19,22 @@ export function useMatches() {
     }
     setLoading(true)
     setError(null)
-    const [data, userTitles] = await Promise.all([
-      api.getUserMatches(user.id),
-      api.getUserTitles(user.id),
-    ])
-    setMatches(data)
-    setTitles(userTitles)
-    setLoading(false)
+    try {
+      const [data, userTitles] = await Promise.all([
+        api.getUserMatches(user.id),
+        api.getUserTitles(user.id),
+      ])
+      setMatches(data)
+      setTitles(userTitles)
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Erro ao carregar partidas'
+      console.error('[CTB] useMatches:', e)
+      setError(msg)
+      setMatches([])
+      setTitles([])
+    } finally {
+      setLoading(false)
+    }
   }, [user])
 
   useEffect(() => {
