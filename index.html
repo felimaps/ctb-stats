@@ -10,6 +10,14 @@
     <title>CTB Stats — Tênis Amador</title>
   </head>
   <body>
+    <script>
+      (function () {
+        var path = window.location.pathname
+        if (path && path !== '/' && !window.location.hash) {
+          window.location.replace('/#' + path + window.location.search + window.location.hash)
+        }
+      })()
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
