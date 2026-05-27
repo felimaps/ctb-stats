@@ -12,10 +12,9 @@
   <body>
     <script>
       (function () {
-        var path = window.location.pathname
         var hash = window.location.hash
-        if (path && path !== '/' && !hash) {
-          window.location.replace('/#' + path + window.location.search)
+        if (hash && hash.charAt(1) === '/') {
+          window.location.replace(hash.slice(1) + window.location.search)
         }
       })()
     </script>

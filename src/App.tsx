@@ -1,4 +1,4 @@
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { SupabaseConfigGuard } from './components/layout/SupabaseConfigGuard'
 import { ProtectedRoute } from './components/layout/ProtectedRoute'
@@ -18,6 +18,7 @@ import { RivalidadeDetalhe } from './pages/RivalidadeDetalhe'
 import { Feed } from './pages/Feed'
 import { Titulos } from './pages/Titulos'
 import { MelhoreSeuJogo } from './pages/MelhoreSeuJogo'
+import { NotFound } from './pages/NotFound'
 
 function PublicOnly({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -35,7 +36,7 @@ function PublicOnly({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <SupabaseConfigGuard>
-      <HashRouter>
+      <BrowserRouter>
         <AuthProvider>
           <Routes>
           <Route element={<AuthLayout />}>
@@ -78,10 +79,10 @@ export default function App() {
           </Route>
 
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
-      </HashRouter>
+      </BrowserRouter>
     </SupabaseConfigGuard>
   )
 }
