@@ -1,23 +1,4 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "framework": "vite",
-  "redirects": [
-    { "source": "/login", "destination": "/#/login", "permanent": false },
-    { "source": "/cadastro", "destination": "/#/cadastro", "permanent": false },
-    { "source": "/dashboard", "destination": "/#/dashboard", "permanent": false },
-    { "source": "/perfil", "destination": "/#/perfil", "permanent": false },
-    { "source": "/nova-partida", "destination": "/#/nova-partida", "permanent": false },
-    { "source": "/historico", "destination": "/#/historico", "permanent": false },
-    { "source": "/estatisticas", "destination": "/#/estatisticas", "permanent": false },
-    { "source": "/ranking", "destination": "/#/ranking", "permanent": false },
-    { "source": "/titulos", "destination": "/#/titulos", "permanent": false },
-    { "source": "/rivalidades", "destination": "/#/rivalidades", "permanent": false },
-    { "source": "/rivalidades/:adversario", "destination": "/#/rivalidades/:adversario", "permanent": false },
-    { "source": "/feed", "destination": "/#/feed", "permanent": false },
-    { "source": "/melhore-seu-jogo", "destination": "/#/melhore-seu-jogo", "permanent": false }
-  ],
   "rewrites": [
     {
       "source": "/(.*)",

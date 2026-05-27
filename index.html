@@ -13,8 +13,9 @@
     <script>
       (function () {
         var path = window.location.pathname
-        if (path && path !== '/' && !window.location.hash) {
-          window.location.replace('/#' + path + window.location.search + window.location.hash)
+        var hash = window.location.hash
+        if (path && path !== '/' && !hash) {
+          window.location.replace('/#' + path + window.location.search)
         }
       })()
     </script>
