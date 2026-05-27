@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { SupabaseConfigGuard } from './components/layout/SupabaseConfigGuard'
 import { ProtectedRoute } from './components/layout/ProtectedRoute'
@@ -35,7 +35,7 @@ function PublicOnly({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <SupabaseConfigGuard>
-      <BrowserRouter>
+      <HashRouter>
         <AuthProvider>
           <Routes>
           <Route element={<AuthLayout />}>
@@ -81,7 +81,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         </AuthProvider>
-      </BrowserRouter>
+      </HashRouter>
     </SupabaseConfigGuard>
   )
 }
