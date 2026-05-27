@@ -7,19 +7,19 @@ interface CheckboxProps {
 
 export function Checkbox({ label, checked, onChange, description }: CheckboxProps) {
   return (
-    <label className="flex items-start gap-3 cursor-pointer group">
+    <label className="flex items-start gap-3 cursor-pointer group py-1 min-h-[44px]">
       <input
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="mt-1 h-4 w-4 rounded border-slate-300 text-court-600 focus:ring-court-500"
+        className="mt-1 h-5 w-5 shrink-0 rounded border-ctb-border text-ctb-primary focus:ring-ctb-primary/30"
       />
-      <div>
-        <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900">
+      <div className="min-w-0 flex-1">
+        <span className="text-sm font-medium text-ctb-dark group-hover:text-ctb-primary">
           {label}
         </span>
         {description && (
-          <p className="text-xs text-slate-500 mt-0.5">{description}</p>
+          <p className="text-xs text-ctb-muted mt-0.5 leading-relaxed">{description}</p>
         )}
       </div>
     </label>

@@ -31,7 +31,7 @@ export function RivalCard({
               <Swords className="h-6 w-6 text-ctb-primary" strokeWidth={2} />
             </div>
             <div className="min-w-0">
-              <h3 className="text-xl font-bold text-ctb-dark truncate">{rival.adversario}</h3>
+              <h3 className="text-xl font-bold text-ctb-dark ctb-break-words line-clamp-2">{rival.adversario}</h3>
               {badge && (
                 <span
                   className={`inline-flex items-center gap-1 mt-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border ${badgeStyles[badge.variant]}`}

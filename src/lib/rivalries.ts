@@ -225,10 +225,18 @@ export function encontrarRival(
   slug: string,
   titles: Title[] = []
 ): RivalStats | null {
-  const busca = slugParaBusca(slug)
+  const busca = slugParaBusca(slug).trim()
   const todas = calcularRivalidadesDetalhadas(partidas, titles)
   return (
-    todas.find((r) => r.slug === slug || r.adversario.toLowerCase() === busca) ??
-    null
+    todas.find((r) => {
+      const advNorm = r.adversario.trim().toLowerCase()
+      const slugNorm = slugParaBusca(r.slug)
+      return (
+        r.slug === slug ||
+        slugNorm === busca ||
+        advNorm === busca ||
+        encodeURIComponent(advNorm) === slug
+      )
+    }) ?? null
   )
 }

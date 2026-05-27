@@ -18,11 +18,11 @@ import {
   YAxis,
   Tooltip,
   Legend,
-  ResponsiveContainer,
   CartesianGrid,
   Cell,
 } from 'recharts'
 import { Card } from '../components/ui/Card'
+import { ChartBox } from '../components/ui/ChartBox'
 import { StatCard } from '../components/ui/StatCard'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { useMatches } from '../hooks/useMatches'
@@ -38,11 +38,11 @@ import {
 import type { HumorOpcao, CorpoOpcao } from '../types'
 
 function ChipTags({ items, variant }: { items: string[]; variant: 'humor' | 'corpo' }) {
-  if (items.length === 0) return <span className="text-xs text-slate-400">—</span>
+  if (items.length === 0) return <span className="text-xs text-ctb-muted">—</span>
   const cls =
     variant === 'humor'
-      ? 'bg-sky-50 text-sky-700'
-      : 'bg-court-50 text-court-700'
+      ? 'bg-ctb-light text-ctb-primary'
+      : 'bg-ctb-bg text-ctb-muted border border-ctb-border'
   return (
     <div className="flex flex-wrap gap-1">
       {items.map((i) => (
@@ -72,13 +72,13 @@ export function RivalidadeDetalhe() {
       <div className="space-y-4">
         <Link
           to="/rivalidades"
-          className="inline-flex items-center gap-1 text-sm text-court-600"
+          className="inline-flex items-center gap-1 text-sm text-ctb-primary font-medium min-h-[44px]"
         >
           <ArrowLeft className="h-4 w-4" />
           Voltar
         </Link>
         <Card>
-          <p className="text-center text-slate-500 py-6">Adversário não encontrado.</p>
+          <p className="text-center text-ctb-muted py-6">Adversário não encontrado.</p>
         </Card>
       </div>
     )
@@ -104,8 +104,8 @@ export function RivalidadeDetalhe() {
       </Link>
 
       <div>
-        <h1 className="text-2xl font-bold text-slate-800">vs {rival.adversario}</h1>
-        <p className="text-sm text-court-600 font-medium mt-0.5">{rival.sequenciaLabel}</p>
+        <h1 className="text-2xl font-bold text-ctb-dark ctb-break-words">vs {rival.adversario}</h1>
+        <p className="text-sm text-ctb-primary font-medium mt-0.5">{rival.sequenciaLabel}</p>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -186,53 +186,38 @@ export function RivalidadeDetalhe() {
         )}
       </div>
 
-      <Card title="Evolução dos confrontos">
+      <Card title="Evolução dos confrontos" className="min-w-0">
         {chartTimeline.length < 2 ? (
-          <p className="text-sm text-slate-500 text-center py-6">Poucos jogos para gráfico.</p>
+          <p className="text-sm text-ctb-muted text-center py-6">Poucos jogos para gráfico.</p>
         ) : (
-          <ResponsiveContainer width="100%" height={240}>
-            <LineChart data={chartTimeline} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+          <ChartBox height={220}>
+            <LineChart data={chartTimeline} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
+              <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} allowDecimals={false} axisLine={false} tickLine={false} width={28} />
               <Tooltip />
-              <Legend />
-              <Line
-                type="monotone"
-                dataKey="vitoriasAcum"
-                stroke="#0d9488"
-                name="Vitórias"
-                strokeWidth={2}
-              />
-              <Line
-                type="monotone"
-                dataKey="derrotasAcum"
-                stroke="#f87171"
-                name="Derrotas"
-                strokeWidth={2}
-              />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Line type="monotone" dataKey="vitoriasAcum" stroke="#3B82F6" name="Vitórias" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="derrotasAcum" stroke="#FCA5A5" name="Derrotas" strokeWidth={2} dot={false} />
             </LineChart>
-          </ResponsiveContainer>
+          </ChartBox>
         )}
       </Card>
 
-      <Card title="Resultado por confronto">
-        <ResponsiveContainer width="100%" height={180}>
-          <BarChart data={chartTimeline} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-            <XAxis dataKey="label" tick={{ fontSize: 10 }} />
-            <YAxis tick={{ fontSize: 11 }} domain={[0, 1]} ticks={[0, 1]} />
+      <Card title="Resultado por confronto" className="min-w-0">
+        <ChartBox height={180}>
+          <BarChart data={chartTimeline} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
+            <XAxis dataKey="label" tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} domain={[0, 1]} ticks={[0, 1]} axisLine={false} tickLine={false} width={24} />
             <Tooltip />
-            <Bar dataKey="resultadoNum" radius={[4, 4, 0, 0]}>
+            <Bar dataKey="resultadoNum" radius={[6, 6, 0, 0]}>
               {chartTimeline.map((entry, i) => (
-                <Cell
-                  key={i}
-                  fill={entry.resultado === 'vitoria' ? '#0d9488' : '#f87171'}
-                />
+                <Cell key={i} fill={entry.resultado === 'vitoria' ? '#3B82F6' : '#FCA5A5'} />
               ))}
             </Bar>
           </BarChart>
-        </ResponsiveContainer>
+        </ChartBox>
       </Card>
 
       <Card title="Corpo e mente contra este adversário">
@@ -240,7 +225,7 @@ export function RivalidadeDetalhe() {
           <div className="flex items-start gap-2">
             <Brain className="h-4 w-4 text-violet-500 mt-0.5" />
             <div>
-              <p className="text-xs text-slate-500">Humor antes (mais comum)</p>
+              <p className="text-xs text-ctb-muted">Humor antes (mais comum)</p>
               <p className="text-sm font-medium">{rival.humorAntesComum ?? '—'}</p>
             </div>
           </div>
@@ -252,14 +237,14 @@ export function RivalidadeDetalhe() {
             </div>
           </div>
           <div className="flex items-start gap-2">
-            <Activity className="h-4 w-4 text-court-500 mt-0.5" />
+            <Activity className="h-4 w-4 text-ctb-primary mt-0.5" />
             <div>
               <p className="text-xs text-slate-500">Corpo antes (mais comum)</p>
               <p className="text-sm font-medium">{rival.corpoAntesComum ?? '—'}</p>
             </div>
           </div>
           <div className="flex items-start gap-2">
-            <Activity className="h-4 w-4 text-court-500 mt-0.5" />
+            <Activity className="h-4 w-4 text-ctb-primary mt-0.5" />
             <div>
               <p className="text-xs text-slate-500">Corpo depois (mais comum)</p>
               <p className="text-sm font-medium">{rival.corpoDepoisComum ?? '—'}</p>
@@ -270,7 +255,7 @@ export function RivalidadeDetalhe() {
         {insights.length > 0 && (
           <ul className="space-y-2 border-t border-slate-100 pt-4">
             {insights.slice(0, 4).map((ins, i) => (
-              <li key={i} className="text-sm text-slate-600 bg-slate-50 rounded-lg px-3 py-2">
+              <li key={i} className="text-sm text-ctb-muted bg-ctb-light/50 rounded-xl px-3 py-2">
                 {ins.texto}
               </li>
             ))}
@@ -304,8 +289,8 @@ export function RivalidadeDetalhe() {
                   >
                     {RESULTADO_LABELS[m.resultado]}
                   </span>
-                  <p className="font-semibold text-slate-800 mt-1">{m.placar}</p>
-                  <p className="text-xs text-slate-500">
+                  <p className="font-semibold text-ctb-dark mt-1">{m.placar}</p>
+                  <p className="text-xs text-ctb-muted ctb-break-words leading-relaxed">
                     {format(parseISO(m.data), "dd 'de' MMMM yyyy", { locale: ptBR })} ·{' '}
                     {QUADRA_LABELS[m.tipo_quadra]}
                     {m.duracao ? ` · ${m.duracao} min` : ''}

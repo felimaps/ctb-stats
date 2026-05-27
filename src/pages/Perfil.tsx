@@ -2,13 +2,14 @@ import { useState, useEffect, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Shield, Trophy } from 'lucide-react'
+import { Shield, Trophy, Crown } from 'lucide-react'
 import { Input } from '../components/ui/Input'
 import { Select } from '../components/ui/Select'
 import { Textarea } from '../components/ui/Textarea'
 import { Button } from '../components/ui/Button'
 import { Checkbox } from '../components/ui/Checkbox'
 import { Card } from '../components/ui/Card'
+import { PageHeader } from '../components/ui/PageHeader'
 import { PhotoUpload } from '../components/profile/PhotoUpload'
 import { UserAvatar } from '../components/profile/UserAvatar'
 import { CategoryLabelChip } from '../components/ui/CategoryChip'
@@ -125,8 +126,8 @@ export function Perfil() {
   if (!user) return null
 
   return (
-    <div className="space-y-6 max-w-2xl">
-      <h1 className="text-2xl font-bold text-slate-800">Meu perfil</h1>
+    <div className="space-y-6 max-w-2xl mx-auto w-full min-w-0">
+      <PageHeader title="Meu perfil" subtitle="Dados esportivos e informações de saúde" />
 
       <Card title="Foto de perfil">
         <PhotoUpload
@@ -139,10 +140,10 @@ export function Perfil() {
       <div className="flex items-center gap-4">
         <UserAvatar user={user} size="lg" />
         <div>
-          <p className="font-semibold text-slate-800">{user.nome}</p>
-          <p className="text-sm text-slate-500">{user.email}</p>
+          <p className="font-semibold text-ctb-dark ctb-break-words">{user.nome}</p>
+          <p className="text-sm text-ctb-muted ctb-break-words">{user.email}</p>
           {user.created_at && (
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs text-ctb-muted mt-1">
               Membro desde{' '}
               {format(parseISO(user.created_at), "d 'de' MMMM 'de' yyyy", {
                 locale: ptBR,
@@ -154,29 +155,29 @@ export function Perfil() {
 
       <Card title="Resumo esportivo">
         {!loadingMatches && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6 p-4 rounded-xl bg-slate-50">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6 p-4 rounded-xl bg-ctb-light/60">
             <div>
-              <p className="text-xs text-slate-500">Partidas</p>
-              <p className="text-lg font-bold">{stats.totalPartidas}</p>
+              <p className="text-xs text-ctb-muted">Partidas</p>
+              <p className="text-lg font-bold text-ctb-dark">{stats.totalPartidas}</p>
             </div>
             <div>
-              <p className="text-xs text-slate-500">Aproveitamento</p>
-              <p className="text-lg font-bold text-court-600">{stats.aproveitamento}%</p>
+              <p className="text-xs text-ctb-muted">Aproveitamento</p>
+              <p className="text-lg font-bold text-ctb-primary">{stats.aproveitamento}%</p>
             </div>
             <div>
-              <p className="text-xs text-slate-500">Títulos</p>
+              <p className="text-xs text-ctb-muted">Títulos</p>
               <p className="text-lg font-bold text-amber-600">{titles.length}</p>
             </div>
             <div>
-              <p className="text-xs text-slate-500">Pontos</p>
-              <p className="text-lg font-bold">{stats.pontuacao}</p>
+              <p className="text-xs text-ctb-muted">Pontos</p>
+              <p className="text-lg font-bold text-ctb-dark">{stats.pontuacao}</p>
             </div>
           </div>
         )}
 
         {catInfo.categoriaAtual && (
           <div className="mb-4">
-            <p className="text-xs text-slate-500 mb-1">Categoria atual</p>
+            <p className="text-xs text-ctb-muted mb-1">Categoria atual</p>
             <CategoryLabelChip label={catInfo.categoriaAtual} />
           </div>
         )}
@@ -224,10 +225,16 @@ export function Perfil() {
             value={estiloJogo}
             onChange={(e) => setEstiloJogo(e.target.value)}
           />
-          <Link to="/ranking" className="inline-flex items-center gap-1 text-sm text-court-600">
+          <div className="flex flex-wrap gap-3 pt-2">
+          <Link to="/ranking" className="inline-flex items-center gap-1 text-sm text-ctb-primary font-medium min-h-[44px]">
             <Trophy className="h-4 w-4" />
-            Ver ranking geral
+            Ver ranking
           </Link>
+          <Link to="/titulos" className="inline-flex items-center gap-1 text-sm text-ctb-primary font-medium min-h-[44px]">
+            <Crown className="h-4 w-4" />
+            Meus títulos
+          </Link>
+          </div>
         </div>
       </Card>
 
@@ -235,9 +242,9 @@ export function Perfil() {
         title="Saúde e segurança"
         subtitle="Somente você vê estes dados — não aparecem no perfil público"
       >
-        <div className="mb-4 flex items-center gap-2 text-violet-600">
-          <Shield className="h-5 w-5" />
-          <p className="text-xs text-slate-500">
+        <div className="mb-4 flex items-center gap-2 text-ctb-primary">
+          <Shield className="h-5 w-5 shrink-0" />
+          <p className="text-xs text-ctb-muted">
             Use em caso de emergência em torneios. Mantenha atualizado.
           </p>
         </div>
@@ -296,8 +303,8 @@ export function Perfil() {
             placeholder="Opcional"
           />
 
-          <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 space-y-3">
-            <p className="text-sm font-semibold text-slate-700">Privacidade</p>
+          <div className="rounded-xl border border-ctb-border bg-ctb-light/40 p-4 space-y-1">
+            <p className="text-sm font-semibold text-ctb-dark mb-2">Privacidade</p>
             <Checkbox
               label="Manter informações médicas privadas"
               description="Nunca exibir para outros jogadores"
@@ -320,7 +327,7 @@ export function Perfil() {
       </Card>
 
       {message && (
-        <p className="text-sm text-court-600 bg-court-50 rounded-lg px-3 py-2">
+        <p className="text-sm text-ctb-primary bg-ctb-light rounded-xl px-4 py-3">
           {message}
         </p>
       )}

@@ -8,13 +8,13 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
-  ResponsiveContainer,
 } from 'recharts'
 import { Card } from '../ui/Card'
+import { ChartBox } from '../ui/ChartBox'
 import type { ChartPoint } from '../../lib/charts'
 
-const CHART_PRIMARY = '#60A5FA'
-const CHART_PRIMARY_DARK = '#3B82F6'
+const CHART_PRIMARY = '#3B82F6'
+const CHART_SECONDARY = '#60A5FA'
 const CHART_WIN = '#34D399'
 const CHART_LOSS = '#FCA5A5'
 const CHART_GRID = '#F1F5F9'
@@ -44,12 +44,12 @@ function ChartBlock({
 
   return (
     <Card title={title} accent>
-      <ResponsiveContainer width="100%" height={200}>
+      <ChartBox height={200}>
         {type === 'bar' ? (
           <BarChart data={data} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
-            <XAxis dataKey="periodo" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+            <XAxis dataKey="periodo" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={28} />
             <Tooltip
               contentStyle={{
                 borderRadius: 12,
@@ -59,20 +59,20 @@ function ChartBlock({
             />
             {dataKey === 'vitorias' && (
               <>
-                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
                 <Bar dataKey="vitorias" fill={CHART_WIN} name="Vitórias" radius={[6, 6, 0, 0]} />
                 <Bar dataKey="derrotas" fill={CHART_LOSS} name="Derrotas" radius={[6, 6, 0, 0]} />
               </>
             )}
             {dataKey === 'partidas' && (
-              <Bar dataKey="partidas" fill={CHART_PRIMARY} name="Partidas" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="partidas" fill={CHART_SECONDARY} name="Partidas" radius={[6, 6, 0, 0]} />
             )}
           </BarChart>
         ) : (
           <LineChart data={data} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
-            <XAxis dataKey="periodo" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} domain={[0, 100]} axisLine={false} tickLine={false} />
+            <XAxis dataKey="periodo" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} domain={[0, 100]} axisLine={false} tickLine={false} width={32} />
             <Tooltip
               formatter={(v) => [`${v}%`, 'Aproveitamento']}
               contentStyle={{
@@ -84,15 +84,15 @@ function ChartBlock({
             <Line
               type="monotone"
               dataKey="aproveitamento"
-              stroke={CHART_PRIMARY_DARK}
-              strokeWidth={2}
-              dot={{ r: 3, fill: CHART_PRIMARY }}
-              activeDot={{ r: 5, fill: CHART_PRIMARY_DARK }}
+              stroke={CHART_PRIMARY}
+              strokeWidth={2.5}
+              dot={{ r: 3, fill: CHART_SECONDARY, strokeWidth: 0 }}
+              activeDot={{ r: 5, fill: CHART_PRIMARY }}
               name="Aproveitamento %"
             />
           </LineChart>
         )}
-      </ResponsiveContainer>
+      </ChartBox>
     </Card>
   )
 }
@@ -118,7 +118,7 @@ export function StatsCharts({
       <ChartBlock title="Vitórias por mês" data={porMes} />
       <ChartBlock title="Vitórias por ano" data={porAno} />
       <ChartBlock title="Partidas por mês" data={partidasPorMes} dataKey="partidas" />
-      <div className="sm:col-span-2">
+      <div className="sm:col-span-2 min-w-0">
         <ChartBlock title="Aproveitamento ao longo do tempo" data={aproveitamento} type="line" dataKey="aproveitamento" />
       </div>
     </div>

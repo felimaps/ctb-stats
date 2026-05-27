@@ -133,7 +133,7 @@ export function MatchForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="space-y-4">
-        <h3 className="text-sm font-semibold text-slate-800 uppercase tracking-wide">
+        <h3 className="text-sm font-semibold text-ctb-dark uppercase tracking-wide">
           Dados da partida
         </h3>
         <Input
@@ -293,9 +293,9 @@ export function MatchForm({
         )}
       </div>
 
-      <div className="space-y-4 rounded-2xl border border-sky-100 bg-sky-50/40 p-4">
-        <h3 className="text-sm font-semibold text-sky-800">Antes do jogo</h3>
-        <p className="text-xs text-sky-600 -mt-2">Opcional — selecione um ou mais</p>
+      <div className="space-y-4 rounded-2xl border border-ctb-border bg-ctb-light/50 p-4">
+        <h3 className="text-sm font-semibold text-ctb-primary">Antes do jogo</h3>
+        <p className="text-xs text-ctb-muted -mt-2">Opcional — selecione um ou mais</p>
         <ChipSelect
           label="Humor antes do jogo"
           options={HUMOR_OPCOES}
@@ -312,9 +312,9 @@ export function MatchForm({
         />
       </div>
 
-      <div className="space-y-4 rounded-2xl border border-court-100 bg-court-50/40 p-4">
-        <h3 className="text-sm font-semibold text-court-800">Depois do jogo</h3>
-        <p className="text-xs text-court-600 -mt-2">Opcional — selecione um ou mais</p>
+      <div className="space-y-4 rounded-2xl border border-ctb-border bg-ctb-light/30 p-4">
+        <h3 className="text-sm font-semibold text-ctb-primary">Depois do jogo</h3>
+        <p className="text-xs text-ctb-muted -mt-2">Opcional — selecione um ou mais</p>
         <ChipSelect
           label="Humor depois do jogo"
           options={HUMOR_OPCOES}

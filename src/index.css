@@ -151,6 +151,18 @@ body {
   box-shadow: 0 1px 3px rgba(59, 130, 246, 0.25);
 }
 
+/* Área de toque mínima (mobile) */
+.ctb-touch {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Evita texto cortado em cards */
+.ctb-break-words {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .safe-area-pb {
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
