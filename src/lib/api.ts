@@ -58,6 +58,53 @@ async function syncTitleFromMatch(
 
 // ——— Auth ———
 
+const USERS_LEGACY = 'users'
+
+function buildProfileRow(
+  userId: string,
+  email: string,
+  profile: Omit<UserProfile, 'id' | 'email' | 'created_at'>
+) {
+  return {
+    id: userId,
+    email: email.trim(),
+    nome: profile.nome,
+    foto_url: profile.foto_url,
+    cidade: profile.cidade,
+    nivel: profile.nivel,
+    mao_dominante: profile.mao_dominante,
+    estilo_jogo: profile.estilo_jogo,
+    ...defaultHealthPrivacy,
+  }
+}
+
+/** Grava perfil em profiles (+ users legado). id deve ser authData.user.id */
+async function upsertSignupProfile(
+  userId: string,
+  email: string,
+  profile: Omit<UserProfile, 'id' | 'email' | 'created_at'>
+): Promise<string | null> {
+  const sb = getSupabase()
+  const row = buildProfileRow(userId, email, profile)
+
+  const { error: profilesError } = await sb.from(PROFILES).upsert(row, {
+    onConflict: 'id',
+  })
+  if (profilesError) return mapDbError(profilesError.message)
+
+  const { error: usersError } = await sb.from(USERS_LEGACY).upsert(row, {
+    onConflict: 'id',
+  })
+  if (usersError) {
+    const msg = usersError.message.toLowerCase()
+    if (!msg.includes('does not exist') && !msg.includes('relation')) {
+      return mapDbError(usersError.message)
+    }
+  }
+
+  return null
+}
+
 export async function signUp(
   email: string,
   password: string,
@@ -82,26 +129,29 @@ export async function signUp(
   if (authError) return { user: null, error: mapAuthError(authError.message) }
   if (!authData.user) return { user: null, error: 'Erro ao criar conta. Tente novamente.' }
 
-  const { error: profileError } = await sb.from(PROFILES).upsert(
-    {
-      id: authData.user.id,
-      email: email.trim(),
-      nome: profile.nome,
-      foto_url: profile.foto_url,
-      cidade: profile.cidade,
-      nivel: profile.nivel,
-      mao_dominante: profile.mao_dominante,
-      estilo_jogo: profile.estilo_jogo,
-      ...defaultHealthPrivacy,
-    },
-    { onConflict: 'id' }
-  )
+  const userId = authData.user.id
 
-  if (profileError) {
-    return { user: null, error: mapDbError(profileError.message) }
+  if (authData.session) {
+    const { error: sessionError } = await sb.auth.setSession({
+      access_token: authData.session.access_token,
+      refresh_token: authData.session.refresh_token,
+    })
+    if (sessionError) {
+      return { user: null, error: mapAuthError(sessionError.message) }
+    }
+
+    const upsertError = await upsertSignupProfile(userId, email, profile)
+    if (upsertError) {
+      return { user: null, error: upsertError }
+    }
+
+    const user = await getProfile(userId)
+    return { user, error: null }
   }
 
-  if (!authData.session) {
+  await new Promise((r) => setTimeout(r, 400))
+  const existing = await getProfile(userId)
+  if (existing) {
     return {
       user: null,
       error:
@@ -109,8 +159,11 @@ export async function signUp(
     }
   }
 
-  const user = await getProfile(authData.user.id)
-  return { user, error: null }
+  return {
+    user: null,
+    error:
+      'Conta criada, mas o perfil ainda não foi provisionado. Confirme o e-mail ou execute supabase/fix_users_rls.sql no Supabase.',
+  }
 }
 
 export async function signIn(
