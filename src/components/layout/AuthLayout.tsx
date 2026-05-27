@@ -11,9 +11,9 @@ export function AuthLayout() {
           <span className="font-bold text-ctb-dark text-xl tracking-tight">CTB Stats</span>
         </Link>
       </header>
-      <div className="flex-1 flex items-center justify-center px-4 pb-12">
+      <main className="flex-1 w-full px-4 py-6 sm:py-10 pb-12 flex flex-col items-center justify-start md:justify-center">
         <Outlet />
-      </div>
+      </main>
     </div>
   )
 }
