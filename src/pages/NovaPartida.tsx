@@ -10,7 +10,11 @@ export function NovaPartida() {
   const { create } = useMatches()
 
   const handleSubmit = async (data: MatchFormData) => {
-    const match = await create(data)
+    const { match, error } = await create(data)
+    if (error) {
+      alert(error)
+      return
+    }
     if (match) navigate('/historico')
   }
 

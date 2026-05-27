@@ -1,4 +1,4 @@
-# CourtBook — Tênis Amador
+# CTB Stats — Tênis Amador
 
 MVP para jogadores amadores de tênis registrarem partidas, acompanhar estatísticas e evolução no esporte.
 
@@ -9,7 +9,7 @@ MVP para jogadores amadores de tênis registrarem partidas, acompanhar estatíst
 - Tailwind CSS v4
 - Recharts (gráficos)
 - React Router
-- Supabase (auth + banco) — com fallback em modo demonstração (localStorage)
+- Supabase (auth + PostgreSQL + Storage para fotos)
 
 ## Funcionalidades
 
@@ -22,30 +22,40 @@ MVP para jogadores amadores de tênis registrarem partidas, acompanhar estatíst
 - Feed social com curtidas
 - Layout responsivo (sidebar desktop / navegação inferior mobile)
 
-## Início rápido (modo demonstração)
-
-Sem configurar Supabase, o app funciona com dados no navegador:
+## Início rápido
 
 ```bash
 npm install
+cp .env.example .env   # preencha na raiz do projeto (não em src/)
 npm run dev
 ```
 
-Acesse `http://localhost:5173`, crie uma conta e comece a usar.
-
-## Configurar Supabase (produção)
+## Configurar Supabase
 
 1. Crie um projeto em [supabase.com](https://supabase.com)
-2. No SQL Editor, execute o arquivo `supabase/schema.sql`
-3. Copie `.env.example` para `.env` e preencha:
+2. No **SQL Editor**, execute **`supabase/setup_completo.sql`**
+   - Se já rodou setup antigo com tabela `users`, execute também `supabase/migrations/006_rename_users_to_profiles.sql`
+3. **Authentication → Providers** → habilite **Email**  
+   - Para testes: desative **Confirm email** em Settings
+4. **Project Settings → API** → copie URL e chave anon para `.env` na **raiz**:
 
 ```env
-VITE_SUPABASE_URL=https://seu-projeto.supabase.co
+VITE_SUPABASE_URL=https://xxxxxxxx.supabase.co
 VITE_SUPABASE_ANON_KEY=sua-chave-anon
 ```
 
-4. Em Authentication → Providers, habilite **Email**
-5. Reinicie o servidor: `npm run dev`
+5. `npm run check:supabase && npm run dev`
+
+| Recurso | Supabase |
+|---------|----------|
+| Auth (login, sessão) | Supabase Auth |
+| Perfil | Tabela `profiles` |
+| Partidas, categorias, humor/corpo | Tabela `matches` |
+| Títulos | Tabela `titles` |
+| Feed / curtidas | `matches` + `likes` |
+| Foto | Storage `avatars` + URL em `profiles.foto_url` |
+
+Rivalidades, dashboard e estatísticas são calculados em tempo real a partir das partidas no banco.
 
 ## Rotas
 

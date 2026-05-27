@@ -29,7 +29,7 @@ const links = [
 ]
 
 export function Sidebar() {
-  const { user, signOut, isDemoMode } = useAuth()
+  const { user, signOut } = useAuth()
 
   return (
     <aside className="hidden lg:flex lg:flex-col lg:w-[260px] lg:fixed lg:inset-y-0 bg-white border-r border-ctb-border">
@@ -46,12 +46,6 @@ export function Sidebar() {
           </div>
         </div>
       </div>
-
-      {isDemoMode && (
-        <div className="mx-4 mt-4 rounded-xl bg-amber-50 border border-amber-100 px-3 py-2 text-xs text-amber-800 font-medium">
-          Modo demonstração
-        </div>
-      )}
 
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
         {links.map(({ to, icon: Icon, label }) => (

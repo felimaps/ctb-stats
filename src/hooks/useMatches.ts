@@ -8,6 +8,7 @@ export function useMatches() {
   const [matches, setMatches] = useState<Match[]>([])
   const [titles, setTitles] = useState<Title[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     if (!user) {
@@ -17,6 +18,7 @@ export function useMatches() {
       return
     }
     setLoading(true)
+    setError(null)
     const [data, userTitles] = await Promise.all([
       api.getUserMatches(user.id),
       api.getUserTitles(user.id),
@@ -31,17 +33,19 @@ export function useMatches() {
   }, [load])
 
   const create = async (form: MatchFormData) => {
-    if (!user) return null
-    const match = await api.createMatch(user.id, form)
-    await load()
-    return match
+    if (!user) return { match: null, error: 'Faça login para registrar partidas.' }
+    const { match, error: err } = await api.createMatch(user.id, form)
+    if (err) setError(err)
+    if (match) await load()
+    return { match, error: err }
   }
 
   const update = async (matchId: string, form: MatchFormData) => {
-    if (!user) return null
-    const match = await api.updateMatch(matchId, user.id, form)
-    await load()
-    return match
+    if (!user) return { match: null, error: 'Faça login para editar partidas.' }
+    const { match, error: err } = await api.updateMatch(matchId, user.id, form)
+    if (err) setError(err)
+    if (match) await load()
+    return { match, error: err }
   }
 
   const remove = async (matchId: string) => {
@@ -51,5 +55,5 @@ export function useMatches() {
     return ok
   }
 
-  return { matches, titles, loading, reload: load, create, update, remove }
+  return { matches, titles, loading, error, reload: load, create, update, remove }
 }

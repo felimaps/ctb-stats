@@ -1,11 +1,9 @@
--- CourtBook — Schema Supabase
--- Execute no SQL Editor do seu projeto Supabase
+-- CTB Stats — Setup completo do Supabase
+-- Execute no SQL Editor (projeto novo)
 
--- Extensão para UUID (já habilitada por padrão no Supabase)
--- create extension if not exists "uuid-ossp";
+-- ========== profiles (perfil do jogador) ==========
 
--- Tabela de perfis de jogadores (ligada ao auth.users)
-create table if not exists public.users (
+create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   nome text not null,
   email text not null unique,
@@ -28,10 +26,11 @@ create table if not exists public.users (
   created_at timestamptz not null default now()
 );
 
--- Partidas
+-- ========== matches ==========
+
 create table if not exists public.matches (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references public.users(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
   adversario text not null,
   data date not null,
   placar text not null,
@@ -54,10 +53,11 @@ create table if not exists public.matches (
   created_at timestamptz not null default now()
 );
 
--- Títulos conquistados
+-- ========== titles ==========
+
 create table if not exists public.titles (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references public.users(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
   nome_torneio text not null,
   categoria text not null,
   nivel_torneio text not null check (nivel_torneio in ('amistoso', 'local', 'clube', 'regional', 'estadual', 'nacional')),
@@ -69,49 +69,61 @@ create table if not exists public.titles (
   created_at timestamptz not null default now()
 );
 
--- Curtidas no feed
+-- ========== likes ==========
+
 create table if not exists public.likes (
   id uuid primary key default gen_random_uuid(),
   match_id uuid not null references public.matches(id) on delete cascade,
-  user_id uuid not null references public.users(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
   unique (match_id, user_id)
 );
 
--- Índices
 create index if not exists matches_user_id_idx on public.matches(user_id);
 create index if not exists matches_data_idx on public.matches(data desc);
 create index if not exists likes_match_id_idx on public.likes(match_id);
 create index if not exists titles_user_id_idx on public.titles(user_id);
 
--- RLS
-alter table public.users enable row level security;
+-- ========== RLS ==========
+
+alter table public.profiles enable row level security;
 alter table public.matches enable row level security;
 alter table public.titles enable row level security;
 alter table public.likes enable row level security;
 
--- Users: leitura pública (ranking/feed), escrita própria
-create policy "users_select_all" on public.users for select using (true);
-create policy "users_insert_own" on public.users for insert with check (auth.uid() = id);
-create policy "users_update_own" on public.users for update using (auth.uid() = id);
+drop policy if exists "profiles_select_all" on public.profiles;
+drop policy if exists "profiles_insert_own" on public.profiles;
+drop policy if exists "profiles_update_own" on public.profiles;
+create policy "profiles_select_all" on public.profiles for select using (true);
+create policy "profiles_insert_own" on public.profiles for insert with check (auth.uid() = id);
+create policy "profiles_update_own" on public.profiles for update using (auth.uid() = id);
 
--- Matches: leitura pública, CRUD próprio
+drop policy if exists "matches_select_all" on public.matches;
+drop policy if exists "matches_insert_own" on public.matches;
+drop policy if exists "matches_update_own" on public.matches;
+drop policy if exists "matches_delete_own" on public.matches;
 create policy "matches_select_all" on public.matches for select using (true);
 create policy "matches_insert_own" on public.matches for insert with check (auth.uid() = user_id);
 create policy "matches_update_own" on public.matches for update using (auth.uid() = user_id);
 create policy "matches_delete_own" on public.matches for delete using (auth.uid() = user_id);
 
--- Titles: leitura pública, CRUD próprio
+drop policy if exists "titles_select_all" on public.titles;
+drop policy if exists "titles_insert_own" on public.titles;
+drop policy if exists "titles_update_own" on public.titles;
+drop policy if exists "titles_delete_own" on public.titles;
 create policy "titles_select_all" on public.titles for select using (true);
 create policy "titles_insert_own" on public.titles for insert with check (auth.uid() = user_id);
 create policy "titles_update_own" on public.titles for update using (auth.uid() = user_id);
 create policy "titles_delete_own" on public.titles for delete using (auth.uid() = user_id);
 
--- Likes: leitura pública, insert/delete próprio
+drop policy if exists "likes_select_all" on public.likes;
+drop policy if exists "likes_insert_own" on public.likes;
+drop policy if exists "likes_delete_own" on public.likes;
 create policy "likes_select_all" on public.likes for select using (true);
 create policy "likes_insert_own" on public.likes for insert with check (auth.uid() = user_id);
 create policy "likes_delete_own" on public.likes for delete using (auth.uid() = user_id);
 
--- Trigger: criar perfil automaticamente após signup (opcional, backup do client)
+-- ========== Trigger: perfil ao cadastrar ==========
+
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
@@ -119,7 +131,7 @@ security definer
 set search_path = public
 as $$
 begin
-  insert into public.users (id, email, nome, cidade, nivel, mao_dominante, estilo_jogo)
+  insert into public.profiles (id, email, nome, cidade, nivel, mao_dominante, estilo_jogo)
   values (
     new.id,
     new.email,
@@ -139,7 +151,8 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
--- Storage: bucket público para avatares (path: {user_id}/avatar.webp)
+-- ========== Storage: avatars ==========
+
 insert into storage.buckets (id, name, public)
 values ('avatars', 'avatars', true)
 on conflict (id) do update set public = true;

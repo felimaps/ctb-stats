@@ -1,9 +1,11 @@
-import { isSupabaseConfigured, supabase } from './supabase'
-import { localDb } from './localStorage'
+import { getSupabase } from './supabase'
 import { normalizeMatch } from './matchUtils'
 import type { UserProfile, PublicUserProfile, Match, MatchFormData, Title } from '../types'
 import { canRegisterTitle, buildTitlePayload } from './titleSync'
 import { normalizeProfile, toPublicProfile, defaultHealthPrivacy } from './profileUtils'
+import { mapAuthError, mapDbError } from './authErrors'
+
+const PROFILES = 'profiles'
 
 function normalizeMatches(data: unknown[]): Match[] {
   return data.map((m) => normalizeMatch(m as Record<string, unknown>))
@@ -54,81 +56,101 @@ async function syncTitleFromMatch(
   }
 }
 
-export const isDemoMode = !isSupabaseConfigured
-
 // ——— Auth ———
 
 export async function signUp(
   email: string,
   password: string,
   profile: Omit<UserProfile, 'id' | 'email' | 'created_at'>
-) {
-  if (isDemoMode) return localDb.signUp(email, password, profile)
+): Promise<{ user: UserProfile | null; error: string | null }> {
+  const sb = getSupabase()
 
-  const { data: authData, error: authError } = await supabase!.auth.signUp({
-    email,
+  const { data: authData, error: authError } = await sb.auth.signUp({
+    email: email.trim(),
     password,
-  })
-  if (authError) return { user: null, error: authError.message }
-  if (!authData.user) return { user: null, error: 'Erro ao criar conta' }
-
-  const { error: profileError } = await supabase!.from('users').insert({
-    id: authData.user.id,
-    email,
-    nome: profile.nome,
-    foto_url: profile.foto_url,
-    ...defaultHealthPrivacy,
-    cidade: profile.cidade,
-    nivel: profile.nivel,
-    mao_dominante: profile.mao_dominante,
-    estilo_jogo: profile.estilo_jogo,
+    options: {
+      data: {
+        nome: profile.nome,
+        cidade: profile.cidade,
+        nivel: profile.nivel,
+        mao_dominante: profile.mao_dominante,
+        estilo_jogo: profile.estilo_jogo,
+      },
+    },
   })
 
-  if (profileError) return { user: null, error: profileError.message }
+  if (authError) return { user: null, error: mapAuthError(authError.message) }
+  if (!authData.user) return { user: null, error: 'Erro ao criar conta. Tente novamente.' }
+
+  const { error: profileError } = await sb.from(PROFILES).upsert(
+    {
+      id: authData.user.id,
+      email: email.trim(),
+      nome: profile.nome,
+      foto_url: profile.foto_url,
+      cidade: profile.cidade,
+      nivel: profile.nivel,
+      mao_dominante: profile.mao_dominante,
+      estilo_jogo: profile.estilo_jogo,
+      ...defaultHealthPrivacy,
+    },
+    { onConflict: 'id' }
+  )
+
+  if (profileError) {
+    return { user: null, error: mapDbError(profileError.message) }
+  }
+
+  if (!authData.session) {
+    return {
+      user: null,
+      error:
+        'Conta criada! Verifique seu e-mail para confirmar o cadastro antes de entrar.',
+    }
+  }
 
   const user = await getProfile(authData.user.id)
   return { user, error: null }
 }
 
-export async function signIn(email: string, password: string) {
-  if (isDemoMode) return localDb.signIn(email, password)
+export async function signIn(
+  email: string,
+  password: string
+): Promise<{ user: UserProfile | null; error: string | null }> {
+  const sb = getSupabase()
 
-  const { data, error } = await supabase!.auth.signInWithPassword({
-    email,
+  const { data, error } = await sb.auth.signInWithPassword({
+    email: email.trim(),
     password,
   })
-  if (error) return { user: null, error: error.message }
+
+  if (error) return { user: null, error: mapAuthError(error.message) }
   const user = await getProfile(data.user.id)
+  if (!user) {
+    return {
+      user: null,
+      error: 'Perfil não encontrado. Execute o setup do banco no Supabase ou cadastre-se novamente.',
+    }
+  }
   return { user, error: null }
 }
 
-export async function signOut() {
-  if (isDemoMode) {
-    localDb.signOut()
-    return
-  }
-  await supabase!.auth.signOut()
+export async function signOut(): Promise<void> {
+  await getSupabase().auth.signOut()
 }
 
 export async function getSessionUserId(): Promise<string | null> {
-  if (isDemoMode) return localDb.getSession()
-
   const {
     data: { session },
-  } = await supabase!.auth.getSession()
+  } = await getSupabase().auth.getSession()
   return session?.user.id ?? null
 }
 
 // ——— Profile ———
 
 export async function getProfile(userId: string): Promise<UserProfile | null> {
-  if (isDemoMode) {
-    const u = await localDb.getProfile(userId)
-    return u ? normalizeProfile(u as unknown as Record<string, unknown>) : null
-  }
-
-  const { data, error } = await supabase!
-    .from('users')
+  const { data, error } = await getSupabase()
+    .from(PROFILES)
     .select('*')
     .eq('id', userId)
     .single()
@@ -140,32 +162,31 @@ export async function getProfile(userId: string): Promise<UserProfile | null> {
 export async function updateProfile(
   userId: string,
   data: Partial<UserProfile>
-): Promise<UserProfile | null> {
-  if (isDemoMode) {
-    const u = await localDb.updateProfile(userId, data)
-    return u ? normalizeProfile(u as unknown as Record<string, unknown>) : null
-  }
-
-  const { data: updated, error } = await supabase!
-    .from('users')
+): Promise<{ profile: UserProfile | null; error: string | null }> {
+  const { data: updated, error } = await getSupabase()
+    .from(PROFILES)
     .update(data)
     .eq('id', userId)
     .select()
     .single()
 
-  if (error) return null
-  return normalizeProfile(updated as Record<string, unknown>)
+  if (error) return { profile: null, error: mapDbError(error.message) }
+  return {
+    profile: normalizeProfile(updated as Record<string, unknown>),
+    error: null,
+  }
 }
 
 export async function getAllProfiles(): Promise<PublicUserProfile[]> {
-  if (isDemoMode) {
-    const all = await localDb.getAllProfiles()
-    return all.map((u) => toPublicProfile(normalizeProfile(u as unknown as Record<string, unknown>)))
-  }
-
-  const { data } = await supabase!.from('users').select(
+  const { data, error } = await getSupabase().from(PROFILES).select(
     'id, nome, email, foto_url, cidade, nivel, mao_dominante, estilo_jogo, created_at'
   )
+
+  if (error) {
+    console.error('[CTB] getAllProfiles:', error.message)
+    return []
+  }
+
   return (data ?? []).map((row) =>
     toPublicProfile(normalizeProfile(row as Record<string, unknown>))
   )
@@ -177,41 +198,34 @@ export { removeAvatarFile } from './storage'
 // ——— Matches ———
 
 export async function getUserMatches(userId: string): Promise<Match[]> {
-  if (isDemoMode)
-    return normalizeMatches(
-      (await localDb.getMatches(userId)) as unknown as Record<string, unknown>[]
-    )
-
-  const { data } = await supabase!
+  const { data, error } = await getSupabase()
     .from('matches')
     .select('*')
     .eq('user_id', userId)
     .order('data', { ascending: false })
 
+  if (error) {
+    console.error('[CTB] getUserMatches:', error.message)
+    return []
+  }
   return normalizeMatches(data ?? [])
 }
 
 export async function getAllMatches(): Promise<Match[]> {
-  if (isDemoMode)
-    return normalizeMatches(
-      (await localDb.getMatches()) as unknown as Record<string, unknown>[]
-    )
-
-  const { data } = await supabase!
+  const { data, error } = await getSupabase()
     .from('matches')
     .select('*')
     .order('data', { ascending: false })
 
+  if (error) {
+    console.error('[CTB] getAllMatches:', error.message)
+    return []
+  }
   return normalizeMatches(data ?? [])
 }
 
 export async function getMatch(matchId: string): Promise<Match | null> {
-  if (isDemoMode) {
-    const m = await localDb.getMatch(matchId)
-    return m ? normalizeMatch(m as unknown as Record<string, unknown>) : null
-  }
-
-  const { data } = await supabase!
+  const { data } = await getSupabase()
     .from('matches')
     .select('*')
     .eq('id', matchId)
@@ -223,41 +237,30 @@ export async function getMatch(matchId: string): Promise<Match | null> {
 export async function createMatch(
   userId: string,
   form: MatchFormData
-): Promise<Match | null> {
+): Promise<{ match: Match | null; error: string | null }> {
   const payload = matchPayload(form)
 
-  if (isDemoMode) {
-    const match = await localDb.createMatch(userId, payload)
-    await syncTitleFromMatch(userId, match.id, form)
-    return match
-  }
-
-  const { data, error } = await supabase!
+  const { data, error } = await getSupabase()
     .from('matches')
     .insert({ user_id: userId, ...payload })
     .select()
     .single()
 
-  if (error) return null
+  if (error) return { match: null, error: mapDbError(error.message) }
+
   const match = normalizeMatch(data as Record<string, unknown>)
   await syncTitleFromMatch(userId, match.id, form)
-  return match
+  return { match, error: null }
 }
 
 export async function updateMatch(
   matchId: string,
   userId: string,
   form: MatchFormData
-): Promise<Match | null> {
+): Promise<{ match: Match | null; error: string | null }> {
   const payload = matchPayload(form)
 
-  if (isDemoMode) {
-    const match = await localDb.updateMatch(matchId, userId, payload)
-    if (match) await syncTitleFromMatch(userId, matchId, form)
-    return match
-  }
-
-  const { data, error } = await supabase!
+  const { data, error } = await getSupabase()
     .from('matches')
     .update(payload)
     .eq('id', matchId)
@@ -265,24 +268,17 @@ export async function updateMatch(
     .select()
     .single()
 
-  if (error) return null
+  if (error) return { match: null, error: mapDbError(error.message) }
+
   const match = normalizeMatch(data as Record<string, unknown>)
   await syncTitleFromMatch(userId, matchId, form)
-  return match
+  return { match, error: null }
 }
 
-export async function deleteMatch(
-  matchId: string,
-  userId: string
-): Promise<boolean> {
-  if (isDemoMode) {
-    const ok = await localDb.deleteMatch(matchId, userId)
-    return ok
-  }
-
+export async function deleteMatch(matchId: string, userId: string): Promise<boolean> {
   await deleteTitlesByMatchId(matchId)
 
-  const { error } = await supabase!
+  const { error } = await getSupabase()
     .from('matches')
     .delete()
     .eq('id', matchId)
@@ -294,9 +290,7 @@ export async function deleteMatch(
 // ——— Titles ———
 
 export async function getUserTitles(userId: string): Promise<Title[]> {
-  if (isDemoMode) return localDb.getTitles(userId)
-
-  const { data } = await supabase!
+  const { data } = await getSupabase()
     .from('titles')
     .select('*')
     .eq('user_id', userId)
@@ -306,9 +300,7 @@ export async function getUserTitles(userId: string): Promise<Title[]> {
 }
 
 export async function getAllTitles(): Promise<Title[]> {
-  if (isDemoMode) return localDb.getTitles()
-
-  const { data } = await supabase!
+  const { data } = await getSupabase()
     .from('titles')
     .select('*')
     .order('data_titulo', { ascending: false })
@@ -317,15 +309,13 @@ export async function getAllTitles(): Promise<Title[]> {
 }
 
 async function createTitle(data: Omit<Title, 'id' | 'created_at'>): Promise<Title> {
-  if (isDemoMode) return localDb.createTitle(data)
-
-  const { data: row, error } = await supabase!
+  const { data: row, error } = await getSupabase()
     .from('titles')
     .insert(data)
     .select()
     .single()
 
-  if (error) throw error
+  if (error) throw new Error(mapDbError(error.message))
   return row as Title
 }
 
@@ -334,18 +324,11 @@ async function updateTitle(
   userId: string,
   data: Partial<Omit<Title, 'id' | 'user_id' | 'created_at'>>
 ): Promise<void> {
-  if (isDemoMode) {
-    await localDb.updateTitle(titleId, userId, data)
-    return
-  }
-
-  await supabase!.from('titles').update(data).eq('id', titleId).eq('user_id', userId)
+  await getSupabase().from('titles').update(data).eq('id', titleId).eq('user_id', userId)
 }
 
 async function getTitleByMatchId(matchId: string): Promise<Title | null> {
-  if (isDemoMode) return localDb.getTitleByMatchId(matchId)
-
-  const { data } = await supabase!
+  const { data } = await getSupabase()
     .from('titles')
     .select('*')
     .eq('match_id', matchId)
@@ -355,23 +338,14 @@ async function getTitleByMatchId(matchId: string): Promise<Title | null> {
 }
 
 async function deleteTitlesByMatchId(matchId: string): Promise<void> {
-  if (isDemoMode) {
-    await localDb.deleteTitlesByMatchId(matchId)
-    return
-  }
-
-  await supabase!.from('titles').delete().eq('match_id', matchId)
+  await getSupabase().from('titles').delete().eq('match_id', matchId)
 }
 
 // ——— Likes ———
 
-export async function toggleLike(
-  matchId: string,
-  userId: string
-): Promise<boolean> {
-  if (isDemoMode) return localDb.toggleLike(matchId, userId)
-
-  const { data: existing } = await supabase!
+export async function toggleLike(matchId: string, userId: string): Promise<boolean> {
+  const sb = getSupabase()
+  const { data: existing } = await sb
     .from('likes')
     .select('id')
     .eq('match_id', matchId)
@@ -379,11 +353,11 @@ export async function toggleLike(
     .maybeSingle()
 
   if (existing) {
-    await supabase!.from('likes').delete().eq('id', existing.id)
+    await sb.from('likes').delete().eq('id', existing.id)
     return false
   }
 
-  await supabase!.from('likes').insert({ match_id: matchId, user_id: userId })
+  await sb.from('likes').insert({ match_id: matchId, user_id: userId })
   return true
 }
 
@@ -391,12 +365,7 @@ export async function getLikesInfo(
   matchIds: string[],
   userId?: string
 ): Promise<{ counts: Record<string, number>; liked: Set<string> }> {
-  if (isDemoMode) return localDb.getLikesForMatches(matchIds, userId)
-
-  const { data } = await supabase!
-    .from('likes')
-    .select('*')
-    .in('match_id', matchIds)
+  const { data } = await getSupabase().from('likes').select('*').in('match_id', matchIds)
 
   const counts: Record<string, number> = {}
   const liked = new Set<string>()
@@ -410,7 +379,6 @@ export async function getLikesInfo(
   return { counts, liked }
 }
 
-// Ranking: agrega partidas de todos os usuários
 export async function getRanking(): Promise<
   { user: PublicUserProfile; vitorias: number; derrotas: number; pontuacao: number }[]
 > {

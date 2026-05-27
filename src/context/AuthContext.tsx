@@ -8,13 +8,12 @@ import {
 } from 'react'
 import type { UserProfile } from '../types'
 import * as api from '../lib/api'
-import { isDemoMode } from '../lib/api'
-import { supabase } from '../lib/supabase'
+import { getSupabase, isSupabaseConfigured } from '../lib/supabase'
 
 interface AuthContextValue {
   user: UserProfile | null
   loading: boolean
-  isDemoMode: boolean
+  isSupabaseConnected: boolean
   refreshProfile: () => Promise<void>
   signOut: () => Promise<void>
   setUser: (user: UserProfile | null) => void
@@ -27,6 +26,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   const refreshProfile = useCallback(async () => {
+    if (!isSupabaseConfigured) {
+      setUser(null)
+      return
+    }
     const userId = await api.getSessionUserId()
     if (!userId) {
       setUser(null)
@@ -37,15 +40,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
-    refreshProfile().finally(() => setLoading(false))
+    if (!isSupabaseConfigured) {
+      setLoading(false)
+      setUser(null)
+      return
+    }
 
-    if (!isDemoMode && supabase) {
-      const {
-        data: { subscription },
-      } = supabase.auth.onAuthStateChange(() => {
-        refreshProfile()
-      })
-      return () => subscription.unsubscribe()
+    let active = true
+    const sb = getSupabase()
+
+    async function initSession() {
+      try {
+        const {
+          data: { session },
+        } = await sb.auth.getSession()
+
+        if (!active) return
+
+        if (session?.user) {
+          const profile = await api.getProfile(session.user.id)
+          if (active) setUser(profile)
+        } else {
+          setUser(null)
+        }
+      } finally {
+        if (active) setLoading(false)
+      }
+    }
+
+    initSession()
+
+    const {
+      data: { subscription },
+    } = sb.auth.onAuthStateChange(async (_event, session) => {
+      if (!active) return
+      if (session?.user) {
+        const profile = await api.getProfile(session.user.id)
+        if (active) setUser(profile)
+      } else {
+        setUser(null)
+      }
+    })
+
+    return () => {
+      active = false
+      subscription.unsubscribe()
     }
   }, [refreshProfile])
 
@@ -59,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         loading,
-        isDemoMode,
+        isSupabaseConnected: isSupabaseConfigured,
         refreshProfile,
         signOut,
         setUser,

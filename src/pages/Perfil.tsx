@@ -75,7 +75,7 @@ export function Perfil() {
     e.preventDefault()
     if (!user || !nome.trim() || !cidade.trim()) return
     setSaving(true)
-    const updated = await api.updateProfile(user.id, {
+    const { profile, error: err } = await api.updateProfile(user.id, {
       nome: sanitizeText(nome, 120),
       cidade: sanitizeText(cidade, 120),
       nivel,
@@ -94,8 +94,12 @@ export function Perfil() {
       ocultar_telefone_emergencia: ocultarTelefone,
     })
     setSaving(false)
-    if (updated) {
-      setUser(updated)
+    if (err) {
+      setMessage(err)
+      return
+    }
+    if (profile) {
+      setUser(profile)
       await refreshProfile()
       setMessage('Perfil atualizado com sucesso!')
       setTimeout(() => setMessage(''), 3000)
@@ -104,9 +108,13 @@ export function Perfil() {
 
   const handlePhotoUploaded = async (fotoUrl: string) => {
     if (!user) return
-    const updated = await api.updateProfile(user.id, { foto_url: fotoUrl })
-    if (updated) {
-      setUser(updated)
+    const { profile, error: err } = await api.updateProfile(user.id, { foto_url: fotoUrl })
+    if (err) {
+      setMessage(err)
+      return
+    }
+    if (profile) {
+      setUser(profile)
       await refreshProfile()
       setMessage('Foto atualizada!')
       setTimeout(() => setMessage(''), 3000)
@@ -116,9 +124,9 @@ export function Perfil() {
   const handlePhotoRemoved = async () => {
     if (!user) return
     await removeAvatarFile(user.id)
-    const updated = await api.updateProfile(user.id, { foto_url: null })
-    if (updated) {
-      setUser(updated)
+    const { profile } = await api.updateProfile(user.id, { foto_url: null })
+    if (profile) {
+      setUser(profile)
       await refreshProfile()
     }
   }
